@@ -17,17 +17,3 @@ spec:
     connect:
     - name: connect
       url: http://connect:8083
-  # podTemplate:
-  #   probe:
-  #     liveness:
-  #       httpGet:
-  #         path: /
-  #         port: 9021
-  #       initialDelaySeconds: 60
-  #       timeoutSeconds: 500
-  #     readiness:
-  #       httpGet:
-  #         path: /
-  #         port: 9021
-  #       initialDelaySeconds: 60
-  #       timeoutSeconds: 500

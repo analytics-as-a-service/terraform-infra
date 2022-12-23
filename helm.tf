@@ -27,6 +27,11 @@ resource "helm_release" "confluent" {
     name  = "hdfs_service"
     value = local.hdfs_service
   }
+
+  set {
+    name  = "kafka_topic"
+    value = var.kafka_topic
+  }
 }
 
 data "kubernetes_service" "hdfs_nn" {

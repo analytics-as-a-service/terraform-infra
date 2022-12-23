@@ -9,7 +9,7 @@ spec:
   connectClusterRef:
     name: connect
   configs:
-    topics : "transactions"
+    topics : {{ .Values.topic }}
     store.url : {{ .Values.hdfs_service }}
     flush.size : "3"
     hadoop.conf.dir : "/opt/hadoop-3.3.2/etc/hadoop"

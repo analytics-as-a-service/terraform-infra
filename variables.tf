@@ -12,3 +12,8 @@ variable "kube_config_context" {
   type = string
   default = "kubernetes-admin@kubernetes"
 }
+
+variable "kafka_topic" {
+  type = string
+  default = "transactions"
+}
