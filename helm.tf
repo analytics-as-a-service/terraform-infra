@@ -35,3 +35,10 @@ data "kubernetes_service" "hdfs_nn" {
     name = "${helm_release.hdfs.metadata[0].name}-${helm_release.hdfs.metadata[0].chart}-hdfs-nn"
   }
 }
+
+resource "helm_release" "superset" {
+  name       = "superset"
+  repository = "http://apache.github.io/superset/"
+  chart      = "superset"
+  namespace  = var.namespace
+}
