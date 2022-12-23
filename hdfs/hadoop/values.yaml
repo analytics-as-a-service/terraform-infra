@@ -1,0 +1,59 @@
+image:
+  repository: farberg/apache-hadoop
+  tag: 3.3.2
+  pullPolicy: IfNotPresent
+
+# The version of the hadoop libraries being used in the image.
+hadoopVersion: 3.3.2
+logLevel: INFO
+
+# Select antiAffinity as either hard or soft, default is soft
+antiAffinity: "soft"
+
+hdfs:
+  nameNode:
+    pdbMinAvailable: 1
+
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "10m"
+      limits:
+        memory: "2048Mi"
+        cpu: "1000m"
+
+  dataNode:
+    # Will be used as dfs.datanode.hostname
+    # You still need to set up services + ingress for every DN
+    # Datanodes will expect to
+    externalHostname: example.com
+    externalDataPortRangeStart: 50500
+    externalHTTPPortRangeStart: 51000
+
+    replicas: 1
+
+    pdbMinAvailable: 1
+
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "10m"
+      limits:
+        memory: "2048Mi"
+        cpu: "1000m"
+
+  webhdfs:
+    enabled: true
+
+persistence:
+  nameNode:
+    enabled: false
+    storageClass: "-"
+    accessMode: ReadWriteOnce
+    size: 50Gi
+
+  dataNode:
+    enabled: false
+    storageClass: "-"
+    accessMode: ReadWriteOnce
+    size: 200Gi

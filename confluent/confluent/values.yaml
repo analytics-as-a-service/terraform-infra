@@ -1,0 +1,3 @@
+# Default values for confluent.
+
+hdfs_service: "hdfs://hadoop-hadoop-hdfs-nn:9000"

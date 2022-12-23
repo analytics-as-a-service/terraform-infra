@@ -1,0 +1,27 @@
+---
+apiVersion: platform.confluent.io/v1beta1
+kind: Connector
+metadata:
+  name: hdfs-connector
+spec:
+  class: "io.confluent.connect.hdfs3.Hdfs3SinkConnector"
+  taskMax: 3
+  connectClusterRef:
+    name: connect
+  configs:
+    topics : "transactions"
+    store.url : {{ .Values.hdfs_service }}
+    flush.size : "3"
+    hadoop.conf.dir : "/opt/hadoop-3.3.2/etc/hadoop"
+    rotate.interval.ms : "10000"
+    hadoop.home : "/opt/hadoop"
+    logs.dir : "/tmp"
+    errors.tolerance: "all"
+    errors.log.enable: "true"
+    errors.log.include.messages: "true"
+    confluent.license : ""
+    confluent.topic.bootstrap.servers : "kafka:9071"
+    confluent.topic.replication.factor : "1"
+    key.converter : "org.apache.kafka.connect.storage.StringConverter"
+    value.converter : "org.apache.kafka.connect.converters.ByteArrayConverter"
+    value.converter.schema.registry.url : "http://schemaregistry:8081"

@@ -1,0 +1,29 @@
+apiVersion: platform.confluent.io/v1beta1
+kind: Connect
+metadata:
+  name: connect
+spec:
+  replicas: 1
+  image:
+    application: confluentinc/cp-server-connect:7.3.0
+    init: confluentinc/confluent-init-container:2.5.0
+  build:
+    type: onDemand
+    onDemand:
+      plugins:
+        locationType: confluentHub
+        confluentHub:
+          - name: kafka-connect-hdfs3
+            owner: confluentinc
+            version: 1.1.16
+  dependencies:
+    schemaRegistry:
+      url: http://schemaregistry:8081
+    kafka:
+      bootstrapEndpoint: kafka:9071
+  podTemplate:
+    podSecurityContext:
+      fsGroup: 1000
+      runAsUser: 1000
+      runAsNonRoot: true
+        

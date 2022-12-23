@@ -1,0 +1,206 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "hadoop.fullname" . }}
+  labels:
+    app.kubernetes.io/name: {{ include "hadoop.name" . }}
+    helm.sh/chart: {{ include "hadoop.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+data:
+  bootstrap.sh: |
+    #!/bin/bash -x
+
+    echo Starting
+
+    : ${HADOOP_HOME:=/opt/hadoop}
+
+    echo Using ${HADOOP_HOME} as HADOOP_HOME
+
+    . $HADOOP_HOME/etc/hadoop/hadoop-env.sh
+
+    # ------------------------------------------------------
+    # Directory to find config artifacts
+    # ------------------------------------------------------
+
+    CONFIG_DIR="/tmp/hadoop-config"
+
+    # ------------------------------------------------------
+    # Copy config files from volume mount
+    # ------------------------------------------------------
+
+    for f in slaves core-site.xml hdfs-site.xml; do
+      if [[ -e ${CONFIG_DIR}/$f ]]; then
+        cp ${CONFIG_DIR}/$f $HADOOP_HOME/etc/hadoop/$f
+      else
+        echo "ERROR: Could not find $f in $CONFIG_DIR"
+        exit 1
+      fi
+    done
+
+    # ------------------------------------------------------
+    # installing libraries if any
+    # (resource urls added comma separated to the ACP system variable)
+    # ------------------------------------------------------
+    cd $HADOOP_HOME/share/hadoop/common ; for cp in ${ACP//,/ }; do  echo == $cp; curl -LO $cp ; done; cd -
+
+    # ------------------------------------------------------
+    # Start NAMENODE
+    # ------------------------------------------------------
+    if [[ "${HOSTNAME}" =~ "hdfs-nn" ]]; then
+      # sed command changing REPLACEME in $HADOOP_HOME/etc/hadoop/hdfs-site.xml to actual port numbers
+      sed -i "s/EXTERNAL_HTTP_PORT_REPLACEME/9864/" $HADOOP_HOME/etc/hadoop/hdfs-site.xml
+      sed -i "s/EXTERNAL_DATA_PORT_REPLACEME/9866/" $HADOOP_HOME/etc/hadoop/hdfs-site.xml
+
+      mkdir -p /root/hdfs/namenode
+      if [ ! -f /root/hdfs/namenode/formated ]; then
+        # Only format if necessary
+        $HADOOP_HOME/bin/hdfs namenode -format -force -nonInteractive && echo 1 > /root/hdfs/namenode/formated
+      fi
+      $HADOOP_HOME/bin/hdfs --loglevel {{ .Values.logLevel }} --daemon start namenode
+    fi
+
+    # ------------------------------------------------------
+    # Start DATA NODE
+    # ------------------------------------------------------
+    if [[ "${HOSTNAME}" =~ "hdfs-dn" ]]; then
+      # Split hostname at "-" into an array
+      # Example hostname: hadoop-hadoop-hdfs-dn-0
+      HOSTNAME_ARR=(${HOSTNAME//-/ })
+      # Add instance number to start of external port ranges
+      EXTERNAL_HTTP_PORT=$(({{ .Values.hdfs.dataNode.externalHTTPPortRangeStart }} + ${HOSTNAME_ARR[4]}))
+      EXTERNAL_DATA_PORT=$(({{ .Values.hdfs.dataNode.externalDataPortRangeStart }} + ${HOSTNAME_ARR[4]}))
+
+      # sed command changing REPLACEME in $HADOOP_HOME/etc/hadoop/hdfs-site.xml to actual port numbers
+      sed -i "s/EXTERNAL_HTTP_PORT_REPLACEME/${EXTERNAL_HTTP_PORT}/" $HADOOP_HOME/etc/hadoop/hdfs-site.xml
+      sed -i "s/EXTERNAL_DATA_PORT_REPLACEME/${EXTERNAL_DATA_PORT}/" $HADOOP_HOME/etc/hadoop/hdfs-site.xml
+
+      mkdir -p /root/hdfs/datanode
+
+      #  Wait (with timeout) for namenode
+      TMP_URL="http://{{ include "hadoop.fullname" . }}-hdfs-nn:9870"
+      if timeout 5m bash -c "until curl -sf $TMP_URL; do echo Waiting for $TMP_URL; sleep 5; done"; then
+        $HADOOP_HOME/bin/hdfs --loglevel {{ .Values.logLevel }} --daemon start datanode
+      else 
+        echo "$0: Timeout waiting for $TMP_URL, exiting."
+        exit 1
+      fi
+
+    fi
+
+    # ------------------------------------------------------
+    # Tail logfiles for daemonized workloads (parameter -d)
+    # ------------------------------------------------------
+    if [[ $1 == "-d" ]]; then
+      until find ${HADOOP_HOME}/logs -mmin -1 | egrep -q '.*'; echo "`date`: Waiting for logs..." ; do sleep 2 ; done
+      tail -F ${HADOOP_HOME}/logs/* &
+      while true; do sleep 1000; done
+    fi
+
+    # ------------------------------------------------------
+    # Start bash if requested (parameter -bash)
+    # ------------------------------------------------------
+    if [[ $1 == "-bash" ]]; then
+      /bin/bash
+    fi
+
+  core-site.xml: |
+    <?xml version="1.0"?>
+    <?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+    <configuration>
+      <property>
+            <name>fs.defaultFS</name>
+            <value>hdfs://{{ include "hadoop.fullname" . }}-hdfs-nn:9000/</value>
+            <description>NameNode URI</description>
+        </property>
+    </configuration>
+
+  hdfs-site.xml: |
+    <?xml version="1.0"?>
+    <?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+    <configuration>
+    
+{{- if .Values.hdfs.webhdfs.enabled -}}
+      <property>
+          <name>dfs.webhdfs.enabled</name>
+          <value>true</value>
+      </property> 
+{{- end -}}
+
+      <property>
+        <name>dfs.datanode.use.datanode.hostname</name>
+        <value>false</value>
+      </property>
+
+      <property>
+        <name>dfs.client.use.datanode.hostname</name>
+        <value>false</value>
+      </property>
+
+      <property>
+        <name>dfs.datanode.hostname</name>
+        <value>{{ .Values.hdfs.dataNode.externalHostname }}</value>
+      </property>
+
+      <property>
+        <name>dfs.datanode.http.address</name>
+        <value>0.0.0.0:EXTERNAL_HTTP_PORT_REPLACEME</value>
+      </property>
+
+      <property>
+        <name>dfs.datanode.address</name>
+        <value>0.0.0.0:EXTERNAL_DATA_PORT_REPLACEME</value>
+      </property>
+
+      <property>
+        <name>dfs.replication</name>
+          <value>3</value>
+      </property>
+
+      <property>
+        <name>dfs.datanode.data.dir</name>
+        <value>file:///root/hdfs/datanode</value>
+        <description>DataNode directory</description>
+      </property>
+
+      <property>
+        <name>dfs.namenode.name.dir</name>
+        <value>file:///root/hdfs/namenode</value>
+        <description>NameNode directory for namespace and transaction logs storage.</description>
+      </property>
+
+      <property>
+        <name>dfs.namenode.datanode.registration.ip-hostname-check</name>
+        <value>false</value>
+      </property>
+
+      <property>
+        <name>dfs.permissions.enabled</name>
+        <value>false</value>
+      </property>
+
+      <property>
+        <name>dfs.web.ugi</name>
+        <value>root,supergroup</value>
+      </property>
+
+      <property>
+        <name>fs.permissions.umask-mode</name>
+        <value>0000</value>
+      </property>
+
+      <!-- Bind to all interfaces -->
+      <property>
+        <name>dfs.namenode.rpc-bind-host</name>
+        <value>0.0.0.0</value>
+      </property>
+      <property>
+        <name>dfs.namenode.servicerpc-bind-host</name>
+        <value>0.0.0.0</value>
+      </property>
+      <!-- /Bind to all interfaces -->
+
+    </configuration>
+
+  slaves: |
+    localhost
+
