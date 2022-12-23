@@ -1,3 +1,1 @@
-output "service" {
-    value = toset(fileset(".", "confluent/platform/*"))
-}
+# URIs of dashboards   
