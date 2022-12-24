@@ -52,3 +52,96 @@ init:
   podAnnotations: {}
   podSecurityContext: {}
   containerSecurityContext: {}
+
+supersetWorker:
+  command:
+    - /bin/sh
+    - -c
+    - |
+      # Install chrome webdriver
+      # See https://github.com/apache/superset/blob/4fa3b6c7185629b87c27fc2c0e5435d458f7b73d/docs/src/pages/docs/installation/email_reports.mdx
+      apt update
+      wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+      apt install -y --no-install-recommends ./google-chrome-stable_current_amd64.deb
+      wget https://chromedriver.storage.googleapis.com/88.0.4324.96/chromedriver_linux64.zip
+      unzip chromedriver_linux64.zip
+      chmod +x chromedriver
+      mv chromedriver /usr/bin
+      apt autoremove -yqq --purge
+      apt clean
+      rm -f google-chrome-stable_current_amd64.deb chromedriver_linux64.zip
+
+      # Run
+      . {{ .Values.configMountPath }}/superset_bootstrap.sh; celery --app=superset.tasks.celery_app:app worker
+
+supersetCeleryBeat:
+  enabled: true
+
+
+extraSecretEnv:
+  SLACK_API_TOKEN: xoxb-759808853828-4560765112533-x30vxcNflZiklAdksdj4dMhY
+
+configOverrides:
+  feature_flags: |
+    import ast
+
+    FEATURE_FLAGS = {
+        "ALERT_REPORTS": True
+    }
+
+    SLACK_API_TOKEN = os.getenv("SLACK_API_TOKEN",None)
+  celery_conf: |
+    from celery.schedules import crontab
+
+    class CeleryConfig(object):
+      broker_url = f"redis://{env('REDIS_HOST')}:{env('REDIS_PORT')}/0"
+      imports = ('superset.sql_lab', "superset.tasks", "superset.tasks.thumbnails", )
+      result_backend = f"redis://{env('REDIS_HOST')}:{env('REDIS_PORT')}/0"
+      task_annotations = {
+          'sql_lab.get_sql_results': {
+              'rate_limit': '100/s',
+          },
+          'email_reports.send': {
+              'rate_limit': '1/s',
+              'time_limit': 600,
+              'soft_time_limit': 600,
+              'ignore_result': True,
+          },
+      }
+      beat_schedule = {
+          'reports.scheduler': {
+              'task': 'reports.scheduler',
+              'schedule': crontab(minute='*', hour='*'),
+          },
+          'reports.prune_log': {
+              'task': 'reports.prune_log',
+              'schedule': crontab(minute=0, hour=0),
+          },
+          'cache-warmup-hourly': {
+              'task': 'cache-warmup',
+              'schedule': crontab(minute='*/30', hour='*'),
+              'kwargs': {
+                  'strategy_name': 'top_n_dashboards',
+                  'top_n': 10,
+                  'since': '7 days ago',
+              },
+          }
+      }
+
+    CELERY_CONFIG = CeleryConfig
+  reports: |
+    EMAIL_PAGE_RENDER_WAIT = 60
+    WEBDRIVER_BASEURL = "http://{{ template "superset.fullname" . }}:{{ .Values.service.port }}/"
+    WEBDRIVER_BASEURL_USER_FRIENDLY = "https://www.example.com/"
+    WEBDRIVER_TYPE= "chrome"
+    WEBDRIVER_OPTION_ARGS = [
+        "--force-device-scale-factor=2.0",
+        "--high-dpi-support=2.0",
+        "--headless",
+        "--disable-gpu",
+        "--disable-dev-shm-usage",
+        # This is required because our process runs as root (in order to install pip packages)
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-extensions",
+    ]

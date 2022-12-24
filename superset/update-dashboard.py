@@ -1,16 +1,3 @@
-# new_zip_file = 'dashboard.zip'
-
-# with open(new_zip_file, 'rb') as f:
-#     payload = {
-#         'passwords': '{"databases/replaceWithYourDatabase.yaml":"databasePassword"}',
-#         'overwrite': 'true'
-#     }
-#     files = [
-#         ('formData', ('dashboards.zip', f, 'application/zip'))
-#     ]
-
-#     print(f)
-
 import os
 import zipfile
 import tempfile
