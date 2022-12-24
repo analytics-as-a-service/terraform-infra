@@ -1,1 +1,1 @@
-# URIs of dashboards   
+# URIs of dashboards
