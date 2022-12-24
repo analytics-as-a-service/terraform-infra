@@ -6,8 +6,8 @@ spec:
   type: NodePort
   selector:
     confluent-platform: 'true'
-    cr-name: controlcenter
     type: controlcenter
+    app: controlcenter
   ports:
     - port: 9021
       targetPort: 9021

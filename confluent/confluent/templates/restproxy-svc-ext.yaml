@@ -6,9 +6,9 @@ spec:
   type: NodePort
   selector:
     confluent-platform: 'true'
-    cr-name: kafkarestproxy
+    app: kafkarestproxy
     type: kafkarestproxy
   ports:
-    - port: 8088
-      targetPort: 8088
+    - port: 8082
+      targetPort: 8082
       nodePort: 30003

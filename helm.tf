@@ -64,14 +64,28 @@ resource "helm_release" "data_warehouse" {
   }
 }
 
+resource "null_resource" "generate_dashboard" {
+  triggers = {
+      output_present = fileexists("superset/output.zip")
+  }
+  provisioner "local-exec" {
+    command = "python3 update-dashboard.py root ${var.mysql_root_password} ${var.mysql_database} ${var.mysql_table} ${local.data_warehouse_release}-${local.data_warehouse_chart}"
+    working_dir = "superset"
+  }
+}
+
 resource "helm_release" "superset" {
   depends_on = [
-    helm_release.data_warehouse
+    helm_release.data_warehouse,
+    null_resource.generate_dashboard
   ]
   name       = "superset"
-  repository = "http://apache.github.io/superset/"
-  chart      = "superset"
-  namespace  = var.namespace
+  chart     = "superset/superset"
+  namespace = var.namespace
+
+  values = [
+    "${templatefile("superset/values.yaml", { dashboard = filebase64("superset/output.zip") })}"
+  ]
 }
 
 resource "helm_release" "data_computation" {

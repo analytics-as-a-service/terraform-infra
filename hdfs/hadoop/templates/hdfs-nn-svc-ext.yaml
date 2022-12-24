@@ -6,7 +6,6 @@ spec:
   type: NodePort
   selector:
     app.kubernetes.io/name: {{ include "hadoop.name" . }}
-    helm.sh/chart: {{ include "hadoop.chart" . }}
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: hdfs-nn
   ports:

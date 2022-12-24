@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "superset.fullname" . }}-ext
+spec:
+  type: NodePort
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.port }}
+      nodePort: 30004
+  selector:
+    app: {{ template "superset.name" . }}
+    release: {{ .Release.Name }}
