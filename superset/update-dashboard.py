@@ -59,5 +59,4 @@ if __name__ == "__main__":
         "schema": db
     }
 
-    print(data)
     updateZip('dashboard.zip', "output.zip", ['dashboard_export_20221224T112022/databases/BANK-DB.yaml', 'dashboard_export_20221224T112022/datasets/BANK-DB/transactions.yaml'], data)

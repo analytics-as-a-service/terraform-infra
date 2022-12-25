@@ -37,14 +37,6 @@ resource "helm_release" "confluent" {
   }
 }
 
-data "kubernetes_service" "hdfs_nn" {
-  depends_on = [helm_release.hdfs]
-  metadata {
-    namespace = var.namespace
-    name = "${helm_release.hdfs.metadata[0].name}-${helm_release.hdfs.metadata[0].chart}-hdfs-nn"
-  }
-}
-
 resource "helm_release" "data_warehouse" {
   name             = "data-warehouse"
   repository       = "https://charts.bitnami.com/bitnami"
@@ -70,19 +62,22 @@ resource "helm_release" "data_warehouse" {
 }
 
 resource "null_resource" "generate_dashboard" {
-  triggers = {
-    output_present = fileexists("superset/output.zip")
-  }
   provisioner "local-exec" {
     command     = "python3 update-dashboard.py root ${var.mysql_root_password} ${var.mysql_database} ${var.mysql_table} ${local.data_warehouse_release}-${local.data_warehouse_chart}"
     working_dir = "superset"
   }
 }
 
+data "local_file" "dashboard" {
+  filename = "superset/output.zip"
+  depends_on = [
+    null_resource.generate_dashboard
+  ]
+}
+
 resource "helm_release" "superset" {
   depends_on = [
-    helm_release.data_warehouse,
-    null_resource.generate_dashboard
+    helm_release.data_warehouse
   ]
   name             = "superset"
   chart            = "superset/superset"
@@ -90,7 +85,7 @@ resource "helm_release" "superset" {
   create_namespace = true
 
   values = [
-    "${templatefile("superset/values.yaml", { dashboard = filebase64("superset/output.zip"), slack_api = var.slack_api })}"
+    "${templatefile("superset/values.yaml", { dashboard = "${data.local_file.dashboard.content_base64}", slack_api = var.slack_api })}"
   ]
 }
 
