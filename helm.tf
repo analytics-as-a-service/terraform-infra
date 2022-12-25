@@ -3,6 +3,7 @@ resource "helm_release" "hdfs" {
   chart            = "hdfs/hadoop"
   namespace        = var.namespace
   create_namespace = true
+  timeout = var.helm_timeout
 
   values = [
     "${templatefile("hdfs/values.yaml", { model = filebase64("hdfs/model.tar"), modeldir = var.modeldir, dataset_url = var.dataset_url, dataset_dir = var.dataset_dir })}"
@@ -25,6 +26,7 @@ resource "helm_release" "confluent" {
   chart            = "confluent/confluent"
   namespace        = var.namespace
   create_namespace = true
+  timeout = var.helm_timeout
 
   set {
     name  = "hdfs_service"
@@ -43,6 +45,7 @@ resource "helm_release" "data_warehouse" {
   chart            = "mysql"
   namespace        = var.namespace
   create_namespace = true
+  timeout = var.helm_timeout
   set {
     name  = "auth.username"
     value = var.mysql_username
@@ -83,6 +86,7 @@ resource "helm_release" "superset" {
   chart            = "superset/superset"
   namespace        = var.namespace
   create_namespace = true
+  timeout = var.helm_timeout
 
   values = [
     "${templatefile("superset/values.yaml", { dashboard = "${data.local_file.dashboard.content_base64}", slack_api = var.slack_api })}"
@@ -95,6 +99,7 @@ resource "helm_release" "data_computation" {
   chart            = "spark"
   namespace        = var.namespace
   create_namespace = true
+  timeout = var.helm_timeout
   set {
     name  = "image.repository"
     value = "akhil15935/spark"
@@ -116,6 +121,7 @@ resource "helm_release" "jupyterhub" {
     helm_release.data_warehouse,
     helm_release.confluent
   ]
+  timeout = var.helm_timeout
   name             = "jupyterhub"
   repository       = "https://jupyterhub.github.io/helm-chart/"
   chart            = "jupyterhub"
@@ -174,6 +180,7 @@ resource "helm_release" "compute_warehouse_integration" {
     helm_release.data_warehouse,
     helm_release.confluent
   ]
+  timeout = var.helm_timeout
   name             = "compute-warehouse-integration"
   chart            = "compute-warehouse-integration"
   namespace        = var.namespace

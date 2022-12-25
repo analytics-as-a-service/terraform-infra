@@ -66,3 +66,8 @@ variable "pipeline_location" {
   type = string
   default = "/model/pipeline"
 }
+
+variable "helm_timeout" {
+  type = number
+  default = 600
+}
