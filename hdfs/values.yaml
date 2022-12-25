@@ -58,3 +58,10 @@ persistence:
     accessMode: ReadWriteOnce
     size: 10Gi
 
+
+extraConfigs:
+  model.tar: ${model}
+modeldir: ${modeldir}
+
+webdatasetzip: ${dataset_url}
+datadir: ${dataset_dir}

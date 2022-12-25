@@ -1,10 +1,11 @@
 resource "helm_release" "hdfs" {
-  name      = "hadoop1"
+  name      = "hadoop"
   chart     = "hdfs/hadoop"
   namespace = var.namespace
+  create_namespace = true
 
   values = [
-    "${file("hdfs/values.yaml")}"
+    "${templatefile("hdfs/values.yaml", { model = filebase64("hdfs/model.tar"), modeldir = var.modeldir, dataset_url = var.dataset_url, dataset_dir = var.dataset_dir })}"
   ]
 }
 
@@ -13,6 +14,7 @@ resource "helm_release" "confluent_operator" {
   repository = "https://packages.confluent.io/helm/"
   chart      = "confluent-for-kubernetes"
   namespace  = var.namespace
+  create_namespace = true
 }
 
 resource "helm_release" "confluent" {
@@ -22,6 +24,7 @@ resource "helm_release" "confluent" {
   name      = "confluent"
   chart     = "confluent/confluent"
   namespace = var.namespace
+  create_namespace = true
 
   set {
     name  = "hdfs_service"
@@ -46,6 +49,7 @@ resource "helm_release" "data_warehouse" {
   repository = "https://charts.bitnami.com/bitnami"
   chart      = "mysql"
   namespace  = var.namespace
+  create_namespace = true
   set {
     name  = "auth.username"
     value = "${var.mysql_username}"
@@ -82,6 +86,7 @@ resource "helm_release" "superset" {
   name       = "superset"
   chart     = "superset/superset"
   namespace = var.namespace
+  create_namespace = true
 
   values = [
     "${templatefile("superset/values.yaml", { dashboard = filebase64("superset/output.zip"), slack_api = var.slack_api })}"
@@ -93,6 +98,7 @@ resource "helm_release" "data_computation" {
   repository = "https://charts.bitnami.com/bitnami"
   chart      = "spark"
   namespace  = var.namespace
+  create_namespace = true
   set {
     name  = "image.repository"
     value = "akhil15935/spark"
@@ -117,6 +123,7 @@ resource "helm_release" "jupyterhub" {
   repository = "https://jupyterhub.github.io/helm-chart/"
   chart      = "jupyterhub"
   namespace  = var.namespace
+  create_namespace = true
   set {
     name  = "singleuser.image.name"
     value = "akhil15935/spark-jupyter"

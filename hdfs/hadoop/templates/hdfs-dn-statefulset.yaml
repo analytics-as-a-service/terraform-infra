@@ -62,6 +62,18 @@ spec:
         #     port: 9864
         #   initialDelaySeconds: 60
         #   timeoutSeconds: 2
+        readinessProbe:
+          exec:
+            command:
+            - hdfs
+            - dfs
+            - -ls
+            - {{ .Values.modeldir }}/model
+          initialDelaySeconds: 0
+          periodSeconds: 10
+          timeoutSeconds: 500
+          failureThreshold: 50
+
         # livenessProbe:
         #   httpGet:
         #     path: /
@@ -73,10 +85,15 @@ spec:
           mountPath: /tmp/hadoop-config
         - name: dfs
           mountPath: /root/hdfs/datanode
+        - name: model-config
+          mountPath: /tmp/model-config
       volumes:
       - name: hadoop-config
         configMap:
           name: {{ include "hadoop.fullname" . }}
+      - name: model-config
+        configMap:
+          name: model
       {{- if .Values.persistence.dataNode.enabled }}
   volumeClaimTemplates:
   - metadata:

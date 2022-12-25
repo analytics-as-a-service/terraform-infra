@@ -85,6 +85,14 @@ data:
         exit 1
       fi
 
+      curl -o /tmp/temp.zip "{{ .Values.webdatasetzip }}"
+      unzip /tmp/temp.zip
+      hdfs dfs -mkdir {{ .Values.datadir }}
+      hdfs dfs -put *.csv {{ .Values.datadir }}
+
+      tar xvf /tmp/model-config/model.tar
+      hdfs dfs -mkdir -p {{ .Values.modeldir }}
+      hdfs dfs -put data/* {{ .Values.modeldir }}
     fi
 
     # ------------------------------------------------------
@@ -203,4 +211,17 @@ data:
 
   slaves: |
     localhost
-
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: model
+  labels:
+    app.kubernetes.io/name: {{ include "hadoop.name" . }}
+    helm.sh/chart: {{ include "hadoop.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+binaryData:
+{{- range $path, $config := .Values.extraConfigs }}
+  {{ $path }}: |
+{{- tpl $config $ | nindent 4 -}}
+{{- end -}}

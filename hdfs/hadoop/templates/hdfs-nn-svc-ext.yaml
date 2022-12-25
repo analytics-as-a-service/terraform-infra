@@ -11,4 +11,3 @@ spec:
   ports:
     - port: 9870
       targetPort: 9870
-      nodePort: 30001
