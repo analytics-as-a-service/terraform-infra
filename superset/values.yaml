@@ -79,7 +79,7 @@ supersetCeleryBeat:
 
 
 extraSecretEnv:
-  SLACK_API_TOKEN: xoxb-759808853828-4560765112533-x30vxcNflZiklAdksdj4dMhY
+  SLACK_API_TOKEN: ${slack_api}
 
 configOverrides:
   feature_flags: |

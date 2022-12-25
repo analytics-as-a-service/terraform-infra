@@ -84,7 +84,7 @@ resource "helm_release" "superset" {
   namespace = var.namespace
 
   values = [
-    "${templatefile("superset/values.yaml", { dashboard = filebase64("superset/output.zip") })}"
+    "${templatefile("superset/values.yaml", { dashboard = filebase64("superset/output.zip"), slack_api = var.slack_api })}"
   ]
 }
 

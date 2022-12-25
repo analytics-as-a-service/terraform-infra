@@ -37,3 +37,7 @@ variable "mysql_table" {
   type = string
   default = "transactions"
 }
+
+variable "slack_api" {
+  type = string
+}
