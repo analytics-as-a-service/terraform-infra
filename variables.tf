@@ -44,7 +44,7 @@ variable "slack_api" {
 
 variable "modeldir" {
   type = string
-  default = "/test"
+  default = "/model"
 }
 
 variable "dataset_url" {
@@ -55,4 +55,14 @@ variable "dataset_url" {
 variable "dataset_dir" {
   type = string
   default = "/data"
+}
+
+variable "model_location" {
+  type = string
+  default = "/model/model"
+}
+
+variable "pipeline_location" {
+  type = string
+  default = "/model/pipeline"
 }

@@ -1,7 +1,7 @@
 resource "helm_release" "hdfs" {
-  name      = "hadoop"
-  chart     = "hdfs/hadoop"
-  namespace = var.namespace
+  name             = "hadoop"
+  chart            = "hdfs/hadoop"
+  namespace        = var.namespace
   create_namespace = true
 
   values = [
@@ -10,10 +10,10 @@ resource "helm_release" "hdfs" {
 }
 
 resource "helm_release" "confluent_operator" {
-  name       = "confluent-operator"
-  repository = "https://packages.confluent.io/helm/"
-  chart      = "confluent-for-kubernetes"
-  namespace  = var.namespace
+  name             = "confluent-operator"
+  repository       = "https://packages.confluent.io/helm/"
+  chart            = "confluent-for-kubernetes"
+  namespace        = var.namespace
   create_namespace = true
 }
 
@@ -21,9 +21,9 @@ resource "helm_release" "confluent" {
   depends_on = [
     helm_release.confluent_operator
   ]
-  name      = "confluent"
-  chart     = "confluent/confluent"
-  namespace = var.namespace
+  name             = "confluent"
+  chart            = "confluent/confluent"
+  namespace        = var.namespace
   create_namespace = true
 
   set {
@@ -40,40 +40,41 @@ resource "helm_release" "confluent" {
 data "kubernetes_service" "hdfs_nn" {
   depends_on = [helm_release.hdfs]
   metadata {
+    namespace = var.namespace
     name = "${helm_release.hdfs.metadata[0].name}-${helm_release.hdfs.metadata[0].chart}-hdfs-nn"
   }
 }
 
 resource "helm_release" "data_warehouse" {
-  name       = "data-warehouse"
-  repository = "https://charts.bitnami.com/bitnami"
-  chart      = "mysql"
-  namespace  = var.namespace
+  name             = "data-warehouse"
+  repository       = "https://charts.bitnami.com/bitnami"
+  chart            = "mysql"
+  namespace        = var.namespace
   create_namespace = true
   set {
     name  = "auth.username"
-    value = "${var.mysql_username}"
+    value = var.mysql_username
   }
   set {
     name  = "auth.password"
-    value = "${var.mysql_password}"
+    value = var.mysql_password
   }
   set {
     name  = "auth.rootPassword"
-    value = "${var.mysql_root_password}"
+    value = var.mysql_root_password
   }
   set {
     name  = "auth.database"
-    value = "${var.mysql_database}"
+    value = var.mysql_database
   }
 }
 
 resource "null_resource" "generate_dashboard" {
   triggers = {
-      output_present = fileexists("superset/output.zip")
+    output_present = fileexists("superset/output.zip")
   }
   provisioner "local-exec" {
-    command = "python3 update-dashboard.py root ${var.mysql_root_password} ${var.mysql_database} ${var.mysql_table} ${local.data_warehouse_release}-${local.data_warehouse_chart}"
+    command     = "python3 update-dashboard.py root ${var.mysql_root_password} ${var.mysql_database} ${var.mysql_table} ${local.data_warehouse_release}-${local.data_warehouse_chart}"
     working_dir = "superset"
   }
 }
@@ -83,9 +84,9 @@ resource "helm_release" "superset" {
     helm_release.data_warehouse,
     null_resource.generate_dashboard
   ]
-  name       = "superset"
-  chart     = "superset/superset"
-  namespace = var.namespace
+  name             = "superset"
+  chart            = "superset/superset"
+  namespace        = var.namespace
   create_namespace = true
 
   values = [
@@ -94,10 +95,10 @@ resource "helm_release" "superset" {
 }
 
 resource "helm_release" "data_computation" {
-  name       = "compute"
-  repository = "https://charts.bitnami.com/bitnami"
-  chart      = "spark"
-  namespace  = var.namespace
+  name             = "compute"
+  repository       = "https://charts.bitnami.com/bitnami"
+  chart            = "spark"
+  namespace        = var.namespace
   create_namespace = true
   set {
     name  = "image.repository"
@@ -108,21 +109,22 @@ resource "helm_release" "data_computation" {
     value = "spark-ml-3.3.1"
   }
   set {
-    name = "worker.replicaCount"
+    name  = "worker.replicaCount"
     value = 3
   }
 }
 
 resource "helm_release" "jupyterhub" {
   depends_on = [
+    helm_release.hdfs,
     helm_release.data_computation,
     helm_release.data_warehouse,
     helm_release.confluent
   ]
-  name       = "jupyterhub"
-  repository = "https://jupyterhub.github.io/helm-chart/"
-  chart      = "jupyterhub"
-  namespace  = var.namespace
+  name             = "jupyterhub"
+  repository       = "https://jupyterhub.github.io/helm-chart/"
+  chart            = "jupyterhub"
+  namespace        = var.namespace
   create_namespace = true
   set {
     name  = "singleuser.image.name"
@@ -142,22 +144,71 @@ resource "helm_release" "jupyterhub" {
   }
   set {
     name  = "singleuser.extraEnv.MYSQL_USERNAME"
-    value = "${var.mysql_username}"
+    value = var.mysql_username
   }
   set {
     name  = "singleuser.extraEnv.MYSQL_PASSWORD"
-    value = "${var.mysql_password}"
+    value = var.mysql_password
   }
   set {
     name  = "singleuser.extraEnv.MYSQL_DATABASE"
-    value = "${var.mysql_database}"
+    value = var.mysql_database
   }
   set {
     name  = "singleuser.extraEnv.MYSQL_TABLE"
-    value = "${var.mysql_table}"
+    value = var.mysql_table
   }
   set {
     name  = "singleuser.extraEnv.KAFKA_TOPIC"
-    value = "${var.kafka_topic}"
+    value = var.kafka_topic
+  }
+  set {
+    name  = "singleuser.extraEnv.MODEL_LOCATION"
+    value = var.model_location
+  }
+  set {
+    name  = "singleuser.extraEnv.PIPELINE_LOCATION"
+    value = var.pipeline_location
+  }
+}
+
+resource "helm_release" "compute_warehouse_integration" {
+  depends_on = [
+    helm_release.hdfs,
+    helm_release.data_computation,
+    helm_release.data_warehouse,
+    helm_release.confluent
+  ]
+  name             = "compute-warehouse-integration"
+  chart            = "compute-warehouse-integration"
+  namespace        = var.namespace
+  create_namespace = true
+  set { 
+    name = "MYSQL_USERNAME"
+    value = var.mysql_username
+  }
+  set { 
+    name = "MYSQL_PASSWORD"
+    value = var.mysql_password
+  }
+  set { 
+    name = "MYSQL_DATABASE"
+    value = var.mysql_database
+  }
+  set { 
+    name = "MYSQL_TABLE"
+    value = var.mysql_table
+  }
+  set { 
+    name = "KAFKA_TOPIC"
+    value = var.kafka_topic
+  }
+  set { 
+    name = "MODEL_LOCATION"
+    value = var.model_location
+  }
+  set { 
+    name = "PIPELINE_LOCATION"
+    value = var.pipeline_location
   }
 }

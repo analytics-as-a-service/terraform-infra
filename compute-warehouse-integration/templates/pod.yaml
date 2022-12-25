@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    run: compute-warehouse-integration
+  name: compute-warehouse-integration
+spec:
+  containers:
+  - image: akhil15935/spark:spark-ml-3.3.1
+    name: compute-warehouse-integration
+    ports:
+    - containerPort: 4040
+    env:
+    - name: MYSQL_USERNAME
+      value: {{.Values.MYSQL_USERNAME}}
+    - name: MYSQL_PASSWORD
+      value: {{.Values.MYSQL_PASSWORD}}
+    - name: MYSQL_DATABASE
+      value: {{.Values.MYSQL_DATABASE}}
+    - name: MYSQL_TABLE
+      value: {{.Values.MYSQL_TABLE}}
+    - name: KAFKA_TOPIC
+      value: {{.Values.KAFKA_TOPIC}}
+    - name: MODEL_LOCATION
+      value: {{.Values.MODEL_LOCATION}}
+    - name: PIPELINE_LOCATION
+      value: {{.Values.PIPELINE_LOCATION}}
+    args:
+      - spark-submit
+      - --packages
+      - com.mysql:mysql-connector-j:8.0.31,org.apache.spark:spark-sql-kafka-0-10_2.12:3.3.1,org.apache.spark:spark-avro_2.12:3.3.1 
+      - /tmp/integratorCode/warehouseIntegrator.py
+    volumeMounts:
+    - name: compute-warehouse-integration
+      mountPath: /tmp/integratorCode/
+    - name: integrator-pv-storage
+      mountPath: /tmp/modules
+  volumes:
+  - name: compute-warehouse-integration
+    configMap:
+      name: compute-warehouse-integration
+  - name: integrator-pv-storage
+    persistentVolumeClaim:
+      claimName: integrator-pv-storage
+  dnsPolicy: ClusterFirst
+  restartPolicy: Always
