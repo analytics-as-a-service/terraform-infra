@@ -164,6 +164,10 @@ resource "helm_release" "jupyterhub" {
     value = var.kafka_topic
   }
   set {
+    name  = "singleuser.extraEnv.DATASET_LOCATION"
+    value = var.dataset_dir
+  }
+  set {
     name  = "singleuser.extraEnv.MODEL_LOCATION"
     value = var.model_location
   }
